@@ -19,8 +19,35 @@ class KMeans:
             X (array<m,n>): a matrix of floats with
                 m rows (#samples) and n columns (#features)
         """
-        # TODO: Implement
-        raise NotImplementedError()
+        n_clusters=2
+        n_iterations=3
+        
+        
+        X = np.asarray(X)
+        samples, dimentions = X.shape
+        X_max = np.amax(X)
+        X_min = np.amin(X)
+        
+        
+        # Create initial random centroids
+        centroids = X_max * np.random.random_sample((n_clusters,dimentions)) - X_min
+        
+        # k-means
+        cluster = np.zeros([samples])
+        for _ in range(n_iterations):
+            # Assignment cluster to centroids
+            for dp in range(samples):
+                e_dist = euclidean_distance(X[dp], centroids)
+                
+                #update cluster with centroid
+                cluster[dp] = np.argmin(e_dist)
+                    
+            # Calculate new centroids
+            
+            
+        print(cluster)
+            
+        
     
     def predict(self, X):
         """
