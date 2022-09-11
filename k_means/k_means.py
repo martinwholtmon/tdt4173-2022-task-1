@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import Normalizer
 
 # IMPORTANT: DO NOT USE ANY OTHER 3RD PARTY PACKAGES
 # (math, random, collections, functools, etc. are perfectly fine)
@@ -12,7 +13,7 @@ class KMeans:
         # (with defaults) as you see fit
         self._n_clusters = n_clusters
         self._n_iterations = n_iterations
-        # self._cluster = []
+        self._cluster = []
         self._centroids = []
 
     def fit(self, X):
@@ -30,12 +31,14 @@ class KMeans:
         X = np.asarray(X)
         samples, dimentions = X.shape
 
+        # Preprossessing
+
         # Create initial random centroids
         centroids = X[random.sample(range(samples), n_clusters)]
 
         # k-means
-        cluster = np.zeros([samples])
         for _ in range(n_iterations):
+            cluster = np.empty((samples), float)
             for dp in range(samples):
                 # For each datapoint, calulate the eucleadian distance to the centroids
                 # and store the lowest distance
@@ -49,7 +52,7 @@ class KMeans:
 
         # Store results
         self._centroids = centroids
-        # self._cluster = cluster
+        self._cluster = cluster
 
     def predict(self, X):
         """
@@ -67,17 +70,7 @@ class KMeans:
             there are 3 clusters, then a possible assignment
             could be: array([2, 0, 0, 1, 2, 1, 1, 0, 2, 2])
         """
-        X = np.asarray(X)
-        samples, _ = X.shape
-        cluster = np.zeros([samples])
-        for dp in range(samples):
-            # For each datapoint, calulate the eucleadian distance to the centroids
-            # and store the lowest distance
-            e_dist = euclidean_distance(X[dp], self._centroids)
-
-            # update cluster with centroid
-            cluster[dp] = np.argmin(e_dist)
-        return cluster.astype(int)
+        return self._cluster.astype(int)
 
     def get_centroids(self):
         """
