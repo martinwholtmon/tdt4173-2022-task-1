@@ -6,10 +6,13 @@ import pandas as pd
 
 
 class KMeans:
-    def __init__(self):
+    def __init__(self, n_clusters=2, n_iterations=10):
         # NOTE: Feel free add any hyperparameters
         # (with defaults) as you see fit
-        pass
+        self._n_clusters = n_clusters
+        self._n_iterations = n_iterations
+        self._cluster = []
+        self._centroids = []
 
     def fit(self, X):
         """
@@ -19,16 +22,17 @@ class KMeans:
             X (array<m,n>): a matrix of floats with
                 m rows (#samples) and n columns (#features)
         """
-        n_clusters = 2
-        n_iterations = 3
+        n_clusters = self._n_clusters
+        n_iterations = self._n_iterations
 
+        # Convert to array
         X = np.asarray(X)
         samples, dimentions = X.shape
-        X_max = np.amax(X)
-        X_min = np.amin(X)
 
         # Create initial random centroids
-        centroids = X_max * np.random.random_sample((n_clusters, dimentions)) - X_min
+        centroids = np.amax(X) * np.random.random_sample(
+            (n_clusters, dimentions)
+        ) - np.amin(X)
 
         # k-means
         cluster = np.zeros([samples])
@@ -42,8 +46,11 @@ class KMeans:
                 cluster[dp] = np.argmin(e_dist)
 
             # Calculate new centroids
+            centroids = calulate_centroids(X, cluster, n_clusters, centroids)
 
-        print(cluster)
+        # Store results
+        self._centroids = centroids
+        self._cluster = cluster
 
     def predict(self, X):
         """
@@ -61,8 +68,7 @@ class KMeans:
             there are 3 clusters, then a possible assignment
             could be: array([2, 0, 0, 1, 2, 1, 1, 0, 2, 2])
         """
-        # TODO: Implement
-        raise NotImplementedError()
+        return self._cluster.astype(int)
 
     def get_centroids(self):
         """
@@ -79,8 +85,7 @@ class KMeans:
             [xm_1, xm_2, ..., xm_n]
         ])
         """
-        # TODO: Implement
-        raise NotImplementedError()
+        return self._centroids
 
 
 # --- Some utility functions
@@ -186,3 +191,17 @@ def euclidean_silhouette(X, z):
     b = (D + inf_mask).min(axis=1)
 
     return np.mean((b - a) / np.maximum(a, b))
+
+
+def calulate_centroids(data, cluster, n_clusters, centroid):
+    new_centroids = np.zeros(centroid.shape)
+    for i in range(n_clusters):
+        arr = data[np.where(cluster == i)]
+        sum_x = np.sum(arr[:, 0])
+        sum_y = np.sum(arr[:, 1])
+        length = arr.shape[0]
+        if length == 0:
+            new_centroids[i] = np.array([0, 0])
+        else:
+            new_centroids[i] = np.array([sum_x / length, sum_y / length])
+    return new_centroids
