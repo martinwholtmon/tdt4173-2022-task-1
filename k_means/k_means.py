@@ -1,3 +1,4 @@
+import random
 import numpy as np
 import pandas as pd
 
@@ -30,9 +31,7 @@ class KMeans:
         samples, dimentions = X.shape
 
         # Create initial random centroids
-        centroids = np.amax(X) * np.random.random_sample(
-            (n_clusters, dimentions)
-        ) - np.amin(X)
+        centroids = X[random.sample(range(samples), n_clusters)]
 
         # k-means
         cluster = np.zeros([samples])
