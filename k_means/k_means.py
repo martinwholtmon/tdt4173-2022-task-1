@@ -1,7 +1,6 @@
 import random
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import Normalizer
 
 # IMPORTANT: DO NOT USE ANY OTHER 3RD PARTY PACKAGES
 # (math, random, collections, functools, etc. are perfectly fine)
