@@ -1,3 +1,6 @@
+from cProfile import label
+from cgi import test
+import re
 import numpy as np
 import pandas as pd
 
@@ -23,54 +26,12 @@ class DecisionTree:
         """
         # Prepare arrays
         attributes = np.asarray(X.columns)
-        print(attributes)
         X = np.asarray(X)
         y = np.asarray(y)
-        n_examples, n_attributes = X.shape
-
-        print(X)
-        # print(y)
-        positive = 0
-        negative = 0
-        for i in range(n_examples):
-            if y[i] == "Yes":
-                positive += 1
-            else:
-                negative += 1
-        S = np.array([positive, negative])
 
         # id3
-        root = ["test"]
-        pos = 0
-        curr_entropy = 0
-        curr_pos = 0
-        for attribute in range(n_attributes):
-            # get occurances
-            arr = {}
-            total = 0
-            for example in range(n_examples):
-                key = X[example][attribute]
-                if key not in arr:
-                    arr[key] = [0, 0]
-                if y[example] == "Yes":
-                    arr[key] = [arr[key][0] + 1, arr[key][1]]
-                else:
-                    arr[key] = [arr[key][0], arr[key][1] + 1]
-                total += 1
-
-            # pick attribute
-            ent = entropy(S)
-            for _, v in arr.items():
-                v = np.asarray(v)
-                ent = ent - sum(v) / total * entropy(v)
-            print(f"Entrophy for attribute {attributes[attribute]} = {ent}")
-
-            if ent > curr_entropy:
-                root[pos] = attributes[attribute]
-                curr_entropy = ent
-                curr_pos = attribute
-        np.delete(attributes, curr_pos)
-        pos += 1
+        tree = id3(X, y, attributes)
+        tree.print()
 
     def predict(self, X):
         """
@@ -150,3 +111,110 @@ def entropy(counts):
     probs = counts / counts.sum()
     probs = probs[probs > 0]  # Avoid log(0)
     return -np.sum(probs * np.log2(probs))
+
+
+def id3(examples, target_attribute, attributes):
+    n_examples, n_attributes = examples.shape
+    root = Tree()
+    # Calculate S
+    S = np.array([0, 0])
+    for i in range(n_examples):
+        if target_attribute[i] == "Yes":
+            S[0] += 1
+        else:
+            S[1] += 1
+
+    # Most common value
+    if np.argmin(S) == 0:
+        most_common_value = "Yes"
+    else:
+        most_common_value = "No"
+
+    # All positive
+    if S[0] == n_examples:
+        root.set_label("Yes")
+        return root
+
+    # All negative
+    if S[1] == n_examples:
+        root.set_label("No")
+        return root
+
+    # Attributes is empty
+    if len(attributes) == 0:
+        root.set_label(most_common_value)
+        print("Most common value!!")
+        return root
+
+    # Select best attribute
+    entropies = []
+    all_attributes = []
+    for i in range(n_attributes):
+        # get occurances of each sub-attribute
+        arr = {}
+        total = 0
+        for example in range(n_examples):
+            key = examples[example][i]
+            if key not in arr:
+                arr[key] = [0, 0]
+            if target_attribute[example] == "Yes":
+                arr[key] = [arr[key][0] + 1, arr[key][1]]
+            else:
+                arr[key] = [arr[key][0], arr[key][1] + 1]
+            total += 1
+
+        # calculate entropy for each attribute
+        ent = entropy(S)
+        for _, v in arr.items():
+            v = np.asarray(v)
+            ent = ent - sum(v) / total * entropy(v)
+        entropies.append(ent)
+        all_attributes.append(list(arr.keys()))
+        # print(f"Entrophy for attribute {attributes[i]} = {ent}")
+    selected_attribute = np.argmax(entropies)
+
+    # print(f"selected attribute: {attributes[selected_attribute]}")
+
+    nodes = []
+    for attribute in all_attributes[selected_attribute]:
+        node = Tree(attribute)
+
+        # Create subset
+        # source: https://stackoverflow.com/a/60366885'
+        rows_to_keep = np.argwhere(np.any(examples == attribute, axis=1))[:, 0]
+        examples_new = examples[rows_to_keep]
+        target_attribute_new = target_attribute[rows_to_keep]
+        examples_new = np.delete(examples_new, selected_attribute, 1)
+
+        if examples_new.size == 0:
+            node.nodes = [Tree(most_common_value)]
+            print("Most common value!!")
+        else:
+            node.nodes = [
+                id3(
+                    examples_new,
+                    target_attribute_new,
+                    np.delete(attributes, selected_attribute),
+                )
+            ]
+        nodes.append(node)
+
+    # Update root
+    root.label = attributes[selected_attribute]
+    root.nodes = nodes
+    return root
+
+
+class Tree:
+    def __init__(self, label=""):
+        self.nodes = []
+        self.label = label
+
+    def set_label(self, label):
+        self.label = label
+
+    def print(self):
+        print(f"label = {self.label}")
+        for node in self.nodes:
+            node.print()
+            print("up")
