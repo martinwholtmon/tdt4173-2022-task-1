@@ -8,11 +8,26 @@ import pandas as pd
 # (math, random, collections, functools, etc. are perfectly fine)
 
 
+class Tree:
+    def __init__(self, label=""):
+        self.nodes = []
+        self.label = label
+
+    def set_label(self, label):
+        self.label = label
+
+    def print(self):
+        print(f"label = {self.label}")
+        for node in self.nodes:
+            node.print()
+            print("up")
+
+
 class DecisionTree:
     def __init__(self):
         # NOTE: Feel free add any hyperparameters
         # (with defaults) as you see fit
-        pass
+        self._tree = Tree()
 
     def fit(self, X, y):
         """
@@ -31,7 +46,8 @@ class DecisionTree:
 
         # id3
         tree = id3(X, y, attributes)
-        tree.print()
+        self._tree = tree
+        # tree.print()
 
     def predict(self, X):
         """
@@ -47,8 +63,14 @@ class DecisionTree:
         Returns:
             A length m vector with predictions
         """
-        # TODO: Implement
-        raise NotImplementedError()
+        attributes = np.asarray(X.columns)
+        X = np.asarray(X)
+        tree = self._tree
+
+        results = []
+        for e in X:
+            results.append(get_leaf_node(tree, attributes, e))
+        return np.asarray(results)
 
     def get_rules(self):
         """
@@ -69,7 +91,7 @@ class DecisionTree:
         ]
         """
         # TODO: Implement
-        raise NotImplementedError()
+        # raise NotImplementedError()
 
 
 # --- Some utility functions
@@ -143,7 +165,6 @@ def id3(examples, target_attribute, attributes):
     # Attributes is empty
     if len(attributes) == 0:
         root.set_label(most_common_value)
-        print("Most common value!!")
         return root
 
     # Select best attribute
@@ -188,7 +209,6 @@ def id3(examples, target_attribute, attributes):
 
         if examples_new.size == 0:
             node.nodes = [Tree(most_common_value)]
-            print("Most common value!!")
         else:
             node.nodes = [
                 id3(
@@ -205,16 +225,21 @@ def id3(examples, target_attribute, attributes):
     return root
 
 
-class Tree:
-    def __init__(self, label=""):
-        self.nodes = []
-        self.label = label
+def get_leaf_node(node, attributes, example) -> str:
+    if node.label == "Yes" or node.label == "No":
+        return node.label
 
-    def set_label(self, label):
-        self.label = label
+    # find attribute position
+    a_pos = np.where(attributes == node.label)[0]
+    if a_pos.size == 0:
+        return "Err"
+    else:
+        a_pos = a_pos[0]
 
-    def print(self):
-        print(f"label = {self.label}")
-        for node in self.nodes:
-            node.print()
-            print("up")
+    # Select next node
+    next_node = Tree()
+    for e in example[a_pos:]:
+        for n_node in node.nodes:
+            if e == n_node.label:
+                next_node = n_node.nodes[0]
+    return get_leaf_node(next_node, attributes, example)
