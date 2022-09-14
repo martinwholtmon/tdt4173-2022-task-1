@@ -24,10 +24,12 @@ class Tree:
 
 
 class DecisionTree:
-    def __init__(self):
+    def __init__(self, target_value_success="Yes"):
         # NOTE: Feel free add any hyperparameters
         # (with defaults) as you see fit
         self._tree = Tree()
+        self._target_values = []
+        self._target_value_success = target_value_success
 
     def fit(self, X, y):
         """
@@ -44,8 +46,26 @@ class DecisionTree:
         X = np.asarray(X)
         y = np.asarray(y)
 
+        # Store the target_values for failure and success
+        all_target_values = list(dict.fromkeys(y))
+        failure = ""
+        success = self._target_value_success
+
+        if all_target_values[0] == success:
+            failure = all_target_values[1]
+        else:
+            failure = all_target_values[0]
+
+        self._target_values = [
+            failure,
+            success,
+        ]
+
+        # convert ground-truth to 0 1, success = 1
+        y = np.array(pd.Series(np.where(y == self._target_value_success, 1, 0), y))
+
         # id3
-        tree = id3(X, y, attributes)
+        tree = id3(X, y, attributes, self._target_values)
         self._tree = tree
         # tree.print()
 
@@ -69,7 +89,7 @@ class DecisionTree:
 
         results = []
         for e in X:
-            results.append(get_leaf_node(tree, attributes, e))
+            results.append(get_leaf_node(tree, attributes, e, self._target_values))
         return np.asarray(results)
 
     def get_rules(self):
@@ -135,31 +155,31 @@ def entropy(counts):
     return -np.sum(probs * np.log2(probs))
 
 
-def id3(examples, target_attribute, attributes):
+def id3(examples, target_attribute, attributes, target_values):
     n_examples, n_attributes = examples.shape
     root = Tree()
     # Calculate S
     S = np.array([0, 0])
     for i in range(n_examples):
-        if target_attribute[i] == "Yes":
+        if target_attribute[i] == 1:
             S[0] += 1
         else:
             S[1] += 1
 
     # Most common value
     if np.argmin(S) == 0:
-        most_common_value = "Yes"
+        most_common_value = target_values[1]
     else:
-        most_common_value = "No"
+        most_common_value = target_values[0]
 
     # All positive
     if S[0] == n_examples:
-        root.set_label("Yes")
+        root.set_label(target_values[1])
         return root
 
     # All negative
     if S[1] == n_examples:
-        root.set_label("No")
+        root.set_label(target_values[0])
         return root
 
     # Attributes is empty
@@ -178,7 +198,7 @@ def id3(examples, target_attribute, attributes):
             key = examples[example][i]
             if key not in arr:
                 arr[key] = [0, 0]
-            if target_attribute[example] == "Yes":
+            if target_attribute[example] == 1:
                 arr[key] = [arr[key][0] + 1, arr[key][1]]
             else:
                 arr[key] = [arr[key][0], arr[key][1] + 1]
@@ -201,7 +221,7 @@ def id3(examples, target_attribute, attributes):
         node = Tree(attribute)
 
         # Create subset
-        # source: https://stackoverflow.com/a/60366885'
+        # source: https://stackoverflow.com/a/60366885
         rows_to_keep = np.argwhere(np.any(examples == attribute, axis=1))[:, 0]
         examples_new = examples[rows_to_keep]
         target_attribute_new = target_attribute[rows_to_keep]
@@ -215,6 +235,7 @@ def id3(examples, target_attribute, attributes):
                     examples_new,
                     target_attribute_new,
                     np.delete(attributes, selected_attribute),
+                    target_values,
                 )
             ]
         nodes.append(node)
@@ -225,8 +246,8 @@ def id3(examples, target_attribute, attributes):
     return root
 
 
-def get_leaf_node(node, attributes, example) -> str:
-    if node.label == "Yes" or node.label == "No":
+def get_leaf_node(node, attributes, example, target_values) -> str:
+    if node.label in target_values:
         return node.label
 
     # find attribute position
@@ -242,4 +263,4 @@ def get_leaf_node(node, attributes, example) -> str:
         for n_node in node.nodes:
             if e == n_node.label:
                 next_node = n_node.nodes[0]
-    return get_leaf_node(next_node, attributes, example)
+    return get_leaf_node(next_node, attributes, example, target_values)
