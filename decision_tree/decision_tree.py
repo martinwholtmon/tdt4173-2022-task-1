@@ -12,6 +12,7 @@ class Tree:
     def __init__(self, label=""):
         self.nodes = []
         self.label = label
+        self.most_common_value = ""
 
     def set_label(self, label):
         self.label = label
@@ -24,12 +25,14 @@ class Tree:
 
 
 class DecisionTree:
-    def __init__(self, target_value_success="Yes"):
+    def __init__(self, target_value_success="Yes", max_depth=4, min_samples_split=0):
         # NOTE: Feel free add any hyperparameters
         # (with defaults) as you see fit
         self._tree = Tree()
         self._target_values = []
         self._target_value_success = target_value_success
+        self._max_depth = max_depth
+        self._min_samples_split = min_samples_split
 
     def fit(self, X, y):
         """
@@ -65,7 +68,15 @@ class DecisionTree:
         y = np.array(pd.Series(np.where(y == self._target_value_success, 1, 0), y))
 
         # id3
-        tree = id3(X, y, attributes, self._target_values)
+        tree = id3(
+            X,
+            y,
+            attributes,
+            self._target_values,
+            0,
+            self._max_depth,
+            self._min_samples_split,
+        )
         self._tree = tree
         # tree.print()
 
@@ -90,6 +101,7 @@ class DecisionTree:
         results = []
         for e in X:
             results.append(get_leaf_node(tree, attributes, e, self._target_values))
+        # print(results)
         return np.asarray(results)
 
     def get_rules(self):
@@ -155,7 +167,15 @@ def entropy(counts):
     return -np.sum(probs * np.log2(probs))
 
 
-def id3(examples, target_attribute, attributes, target_values):
+def id3(
+    examples,
+    target_attribute,
+    attributes,
+    target_values,
+    depth,
+    max_depth,
+    min_samples_split,
+):
     n_examples, n_attributes = examples.shape
     root = Tree()
     # Calculate S
@@ -171,6 +191,7 @@ def id3(examples, target_attribute, attributes, target_values):
         most_common_value = target_values[1]
     else:
         most_common_value = target_values[0]
+    root.most_common_value = most_common_value
 
     # All positive
     if S[0] == n_examples:
@@ -183,7 +204,7 @@ def id3(examples, target_attribute, attributes, target_values):
         return root
 
     # Attributes is empty
-    if len(attributes) == 0:
+    if n_attributes == 0 or depth == max_depth:
         root.set_label(most_common_value)
         return root
 
@@ -227,7 +248,7 @@ def id3(examples, target_attribute, attributes, target_values):
         target_attribute_new = target_attribute[rows_to_keep]
         examples_new = np.delete(examples_new, selected_attribute, 1)
 
-        if examples_new.size == 0:
+        if examples_new.size <= min_samples_split:
             node.nodes = [Tree(most_common_value)]
         else:
             node.nodes = [
@@ -236,6 +257,9 @@ def id3(examples, target_attribute, attributes, target_values):
                     target_attribute_new,
                     np.delete(attributes, selected_attribute),
                     target_values,
+                    depth + 1,
+                    max_depth,
+                    min_samples_split,
                 )
             ]
         nodes.append(node)
@@ -250,17 +274,14 @@ def get_leaf_node(node, attributes, example, target_values) -> str:
     if node.label in target_values:
         return node.label
 
-    # find attribute position
-    a_pos = np.where(attributes == node.label)[0]
-    if a_pos.size == 0:
-        return "Err"
-    else:
-        a_pos = a_pos[0]
-
     # Select next node
     next_node = Tree()
-    for e in example[a_pos:]:
+    for e in example:
         for n_node in node.nodes:
             if e == n_node.label:
                 next_node = n_node.nodes[0]
+
+    # Path/attribute does not exist, set most common value
+    if next_node.label == "":
+        return node.most_common_value
     return get_leaf_node(next_node, attributes, example, target_values)
