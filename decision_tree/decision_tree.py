@@ -1,6 +1,3 @@
-from cProfile import label
-from cgi import test
-import re
 import numpy as np
 import pandas as pd
 
@@ -175,7 +172,7 @@ def id3(
     depth,
     max_depth,
     min_samples_split,
-):
+) -> Tree:
     n_examples, n_attributes = examples.shape
     root = Tree()
     # Calculate S
