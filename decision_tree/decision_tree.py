@@ -97,7 +97,7 @@ class DecisionTree:
         results = []
         for e in X:
             results.append(
-                get_leaf_node(tree, attributes, list(e), self._target_values)
+                get_prediction(tree, attributes, list(e), self._target_values)
             )
         # print(results)
         return np.asarray(results)
@@ -120,8 +120,9 @@ class DecisionTree:
             ...
         ]
         """
-        # TODO: Implement
-        # raise NotImplementedError()
+        rules = []
+        get_leaf_nodes(self._tree, [], rules, self._target_values)
+        return rules
 
 
 # --- Some utility functions
@@ -268,7 +269,7 @@ def id3(
     return root
 
 
-def get_leaf_node(node, attributes, example, target_values) -> str:
+def get_prediction(node, attributes, example, target_values) -> str:
     attribute = node.label
     if attribute in target_values:
         return node.label
@@ -295,4 +296,28 @@ def get_leaf_node(node, attributes, example, target_values) -> str:
     example.remove(next_node.label)
 
     # Continue
-    return get_leaf_node(next_node.nodes[0], attributes, example, target_values)
+    return get_prediction(next_node.nodes[0], attributes, example, target_values)
+
+
+def get_leaf_nodes(node, path, rules, target_values):
+    """Will create the rules for the decision tree in the form:
+    [[[['Outlook', 'Rain'], ['Wind', 'Strong']], 'No'], ...]
+
+    Args:
+        node (Tree): the nodes of the tree
+        path (list): the current path
+        rules (list): the rules
+        target_values (list): the values defining success/failure
+    """
+    # Check if leaf node
+    if node.label in target_values:
+        # Store a COPY (no pointers!!) of the path with the label
+        rules.append([path[:], str(node.label)])
+    else:
+        # Go to next node
+        for n in node.nodes:
+            # Add to path
+            path.append([node.label, n.label])
+            get_leaf_nodes(n.nodes[0], path, rules, target_values)
+    if len(path) != 0:
+        path.pop()
