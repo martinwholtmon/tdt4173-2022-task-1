@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler, Normalizer
 
 
 class KMeans:
-    def __init__(self, n_clusters=2, n_iterations=10):
+    def __init__(self, n_clusters=2, n_iterations=20):
         # NOTE: Feel free add any hyperparameters
         # (with defaults) as you see fit
         self._n_clusters = n_clusters
@@ -29,7 +29,7 @@ class KMeans:
 
         # Convert to array
         X = np.asarray(X)
-        samples, dimentions = X.shape
+        samples, _ = X.shape
 
         # Preprossessing:
         # Scaling/normalization
@@ -38,7 +38,7 @@ class KMeans:
         X = (X - X_mean) / X_std
 
         # Create initial random centroids
-        centroids = X[random.sample(range(samples), n_clusters)]
+        centroids = get_initial_centroids(X, n_clusters)
 
         # k-means
         for _ in range(n_iterations):
@@ -52,7 +52,7 @@ class KMeans:
                 cluster[dp] = np.argmin(e_dist)
 
             # Calculate new centroids
-            centroids = calulate_centroids(X, cluster, n_clusters, centroids)
+            centroids = calulate_new_centroids(X, cluster, n_clusters, centroids)
 
         # Store results and reverse transformation
         self._centroids = centroids * X_std + X_mean
@@ -199,7 +199,18 @@ def euclidean_silhouette(X, z):
     return np.mean((b - a) / np.maximum(a, b))
 
 
-def calulate_centroids(data, cluster, n_clusters, centroid):
+def calulate_new_centroids(data, cluster, n_clusters, centroid) -> np.ndarray:
+    """Calulates the new centroid position given the current clusters. Will calculate the mean in the clusters and then return the new centroids.
+
+    Args:
+        data (np.ndarray): the dataset
+        cluster (np.ndarray): cluster assignments for the dataset
+        n_clusters (int): number of clusters
+        centroid (np.ndarray): the current centroid locations
+
+    Returns:
+        np.ndarray: the new centroid locations
+    """
     new_centroids = np.zeros(centroid.shape)
     for i in range(n_clusters):
         arr = data[np.where(cluster == i)]
@@ -211,3 +222,38 @@ def calulate_centroids(data, cluster, n_clusters, centroid):
         else:
             new_centroids[i] = np.array([sum_x / length, sum_y / length])
     return new_centroids
+
+
+def get_initial_centroids(data, n_clusters) -> np.ndarray:
+    """k-means++ implementation to get the best initial centroids:
+    1. Pick random point in sample as initial centroid
+    2. Calculate eucleadian distance to all data points
+    3. Add the point furthest away from the clusters as new centroid
+    4. Repeat 3-4 until you have reached n_clusters
+
+    Args:
+        data (np.ndarray): the sample data
+        n_clusters (int): number of clusters (K=n)
+
+    Returns:
+        np.ndarray: the initial centroids calulated per k-means++ algo
+    """
+    samples, dimention = data.shape
+    centroids = np.empty([n_clusters, dimention])
+    initial_centroid = data[random.sample(range(samples), 1)]
+    centroids[0] = initial_centroid
+
+    # Initial centroid is assigned, so calucated the
+    for i in range(1, centroids.shape[0]):
+        cluster = np.empty((samples), float)
+        for dp in range(samples):
+            # For each datapoint, calulate the eucleadian distance
+            # to the centroids (that exist 1..i)
+            e_dist = euclidean_distance(data[dp], centroids[:i])
+
+            # update cluster list with distance to closest centroid
+            cluster[dp] = np.min(e_dist)
+
+        # update centroid with the point furthes away from all centroids
+        centroids[i] = data[np.argmax(cluster)]
+    return centroids
