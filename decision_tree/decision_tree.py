@@ -14,11 +14,10 @@ class Tree:
     def set_label(self, label):
         self.label = label
 
-    def print(self):
-        print(f"label = {self.label}")
+    def print(self, space):
+        print(f"{space}label = {self.label}")
         for node in self.nodes:
-            node.print()
-            print("up")
+            node.print(space + "| ")
 
 
 class DecisionTree:
@@ -75,7 +74,7 @@ class DecisionTree:
             self._min_samples_split,
         )
         self._tree = tree
-        # tree.print()
+        # tree.print("")
 
     def predict(self, X):
         """
@@ -97,7 +96,9 @@ class DecisionTree:
 
         results = []
         for e in X:
-            results.append(get_leaf_node(tree, attributes, e, self._target_values))
+            results.append(
+                get_leaf_node(tree, attributes, list(e), self._target_values)
+            )
         # print(results)
         return np.asarray(results)
 
@@ -268,17 +269,30 @@ def id3(
 
 
 def get_leaf_node(node, attributes, example, target_values) -> str:
-    if node.label in target_values:
+    attribute = node.label
+    if attribute in target_values:
         return node.label
 
-    # Select next node
+    # Select next node / correct label
     next_node = Tree()
-    for e in example:
-        for n_node in node.nodes:
-            if e == n_node.label:
-                next_node = n_node.nodes[0]
+    for i in range(len(node.nodes)):
+        if node.nodes[i].label in example:
+            next_node = node.nodes[i]
 
-    # Path/attribute does not exist, set most common value
+    # Path does not exist
     if next_node.label == "":
         return node.most_common_value
-    return get_leaf_node(next_node, attributes, example, target_values)
+
+    # Print
+    # print(attributes)
+    # print(example)
+    # print(f"attribute = {attribute}")
+    # print(f"Selected example = {next_node.label}")
+    # print(f"Next label = {next_node.nodes[0].label}")
+
+    # Remove attribute from list and update example
+    attributes = np.delete(attributes, np.where(attributes == attribute))
+    example.remove(next_node.label)
+
+    # Continue
+    return get_leaf_node(next_node.nodes[0], attributes, example, target_values)
