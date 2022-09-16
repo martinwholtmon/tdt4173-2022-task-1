@@ -42,14 +42,8 @@ class KMeans:
 
         # k-means
         for _ in range(n_iterations):
-            cluster = np.empty((samples), float)
-            for dp in range(samples):
-                # For each datapoint, calulate the eucleadian distance to the centroids
-                # and store the lowest distance
-                e_dist = euclidean_distance(X[dp], centroids)
-
-                # update cluster with centroid
-                cluster[dp] = np.argmin(e_dist)
+            # Get cluster
+            cluster = get_cluster_assignments(X, centroids, samples)
 
             # Calculate new centroids
             centroids = calulate_new_centroids(X, cluster, n_clusters, centroids)
@@ -74,7 +68,8 @@ class KMeans:
             there are 3 clusters, then a possible assignment
             could be: array([2, 0, 0, 1, 2, 1, 1, 0, 2, 2])
         """
-        return self._cluster.astype(int)
+        X = np.asarray(X)
+        return get_cluster_assignments(X, self._centroids, X.shape[0]).astype(int)
 
     def get_centroids(self):
         """
@@ -197,6 +192,18 @@ def euclidean_silhouette(X, z):
     b = (D + inf_mask).min(axis=1)
 
     return np.mean((b - a) / np.maximum(a, b))
+
+
+def get_cluster_assignments(X, centroids, samples) -> np.ndarray:
+    cluster = np.empty((samples), float)
+    for dp in range(samples):
+        # For each datapoint, calulate the eucleadian distance to the centroids
+        # and store the lowest distance
+        e_dist = euclidean_distance(X[dp], centroids)
+
+        # update cluster with centroid
+        cluster[dp] = np.argmin(e_dist)
+    return cluster
 
 
 def calulate_new_centroids(data, cluster, n_clusters, centroid) -> np.ndarray:
