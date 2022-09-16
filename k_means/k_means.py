@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import StandardScaler, Normalizer
 
 # IMPORTANT: DO NOT USE ANY OTHER 3RD PARTY PACKAGES
 # (math, random, collections, functools, etc. are perfectly fine)
@@ -30,7 +31,11 @@ class KMeans:
         X = np.asarray(X)
         samples, dimentions = X.shape
 
-        # Preprossessing
+        # Preprossessing:
+        # Scaling/normalization
+        X_mean = X.mean(axis=0)
+        X_std = X.std(axis=0)
+        X = (X - X_mean) / X_std
 
         # Create initial random centroids
         centroids = X[random.sample(range(samples), n_clusters)]
@@ -49,8 +54,8 @@ class KMeans:
             # Calculate new centroids
             centroids = calulate_centroids(X, cluster, n_clusters, centroids)
 
-        # Store results
-        self._centroids = centroids
+        # Store results and reverse transformation
+        self._centroids = centroids * X_std + X_mean
         self._cluster = cluster
 
     def predict(self, X):
