@@ -15,6 +15,8 @@ class KMeans:
         self._n_iterations = n_iterations
         self._cluster = []
         self._centroids = []
+        self._mean = np.ndarray
+        self._std = np.ndarray
 
     def fit(self, X):
         """
@@ -35,6 +37,9 @@ class KMeans:
         # Scaling/normalization
         X_mean = X.mean(axis=0)
         X_std = X.std(axis=0)
+        self._mean = X_mean
+        self._std = X_std
+
         X = (X - X_mean) / X_std
 
         # Create initial random centroids
@@ -69,7 +74,14 @@ class KMeans:
             could be: array([2, 0, 0, 1, 2, 1, 1, 0, 2, 2])
         """
         X = np.asarray(X)
-        return get_cluster_assignments(X, self._centroids, X.shape[0]).astype(int)
+        X_mean = self._mean
+        X_std = self._std
+
+        X = (X - X_mean) / X_std
+        centroids = (self._centroids - X_mean) / X_std
+
+        return get_cluster_assignments(X, centroids, X.shape[0]).astype(int)
+        # return self._cluster.astype(int)
 
     def get_centroids(self):
         """
