@@ -1,5 +1,8 @@
+from dataclasses import replace
+from distutils import dep_util
 import numpy as np
 import pandas as pd
+import copy
 
 # IMPORTANT: DO NOT USE ANY OTHER 3RD PARTY PACKAGES
 # (math, random, collections, functools, etc. are perfectly fine)
@@ -14,7 +17,7 @@ class Tree:
     def set_label(self, label):
         self.label = label
 
-    def print(self, space):
+    def print(self, space=""):
         print(f"{space}label = {self.label}")
         for node in self.nodes:
             node.print(space + "| ")
@@ -33,6 +36,7 @@ class DecisionTree:
         # (with defaults) as you see fit
         self._tree = Tree()
         self._target_values = []
+        self._ground_thruth = []
         self._target_value_success = target_value_success
         self._max_depth = max_depth
         self._min_samples_split = min_samples_split
@@ -68,6 +72,7 @@ class DecisionTree:
             failure,
             success,
         ]
+        self._ground_thruth = y
 
         # convert ground-truth to 0 1, success = 1
         y = np.array(pd.Series(np.where(y == self._target_value_success, 1, 0), y))
@@ -92,7 +97,7 @@ class DecisionTree:
         X = np.delete(X, remove_col, 1)
 
         # id3
-        tree = id3(
+        self._tree = id3(
             X,
             y,
             attributes,
@@ -102,8 +107,35 @@ class DecisionTree:
             self._min_samples_split,
             self._min_samples_leaf,
         )
-        self._tree = tree
-        # tree.print("")
+        # self._tree.print("")
+
+    def post_prune(self, X, y):
+        # Post pruning
+        # for each rule
+        #   acc = accuracy(y, predict(tree))
+        #
+        #   for each precondition
+        #       old_tree = copy.deepcopy(self._tree)
+        #       update tree
+        #       calculate accuracy
+        #       if new_acc < old_acc:
+        #           self._tree = old_tree
+        rules = self.get_rules()
+
+        for rule in rules:
+            acc = accuracy(y, self.predict(X))
+            # Prune the tree from bottom up
+            for pre_con, _ in list(reversed(rule[0])):
+                old_tree = copy.deepcopy(self._tree)
+
+                # Modify tree
+                prune_node(self._tree, rule[0], pre_con, Tree(rule[1]))
+
+                # Calulate accuracy
+                new_acc = accuracy(y, self.predict(X))
+
+                if new_acc <= acc:
+                    self._tree = old_tree
 
     def predict(self, X):
         """
@@ -358,3 +390,12 @@ def get_leaf_nodes(node, path, rules, target_values):
             get_leaf_nodes(n.nodes[0], path, rules, target_values)
     if len(path) != 0:
         path.pop()
+
+
+def prune_node(node, path, parent, replacement):
+    if node.label == parent:
+        node.nodes = [replacement]
+    else:
+        for n in node.nodes:
+            if n.label == path[0][1]:
+                prune_node(n.nodes[0], path[1:], parent, replacement)
