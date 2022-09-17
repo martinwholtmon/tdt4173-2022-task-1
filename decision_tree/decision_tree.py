@@ -21,13 +21,20 @@ class Tree:
 
 
 class DecisionTree:
-    def __init__(self, target_value_success="Yes", max_depth=4, min_samples_split=0):
+    def __init__(
+        self,
+        target_value_success="Yes",
+        max_depth=4,
+        min_samples_split=0,
+        variance_threshold=1,
+    ):
         # NOTE: Feel free add any hyperparameters
         # (with defaults) as you see fit
         self._tree = Tree()
         self._target_values = []
         self._target_value_success = target_value_success
         self._max_depth = max_depth
+        self._variance_threshold = variance_threshold
         self._min_samples_split = min_samples_split
 
     def fit(self, X, y):
@@ -62,6 +69,25 @@ class DecisionTree:
 
         # convert ground-truth to 0 1, success = 1
         y = np.array(pd.Series(np.where(y == self._target_value_success, 1, 0), y))
+
+        # Preprossessing: Feature Selection
+        remove_col = []
+        for i in range(attributes.shape[0]):
+            # Get all occurances of attribute
+            occurances, _ = get_occurances(X, y, i)
+            # if only two values, i.e. boolean yes/no
+            if len(occurances) == 2:
+                # Caluclate occurance of each value
+                sum_occ = list(map(sum, occurances.values()))
+
+                # Calulcate probability of occurance
+                p = np.min(sum_occ) / np.max(sum_occ)
+
+                # Remove attribute if the probability of occurance
+                # is higher than variance_threshold
+                if p > self._variance_threshold:
+                    remove_col.append(i)
+        X = np.delete(X, remove_col, 1)
 
         # id3
         tree = id3(
@@ -212,17 +238,7 @@ def id3(
     all_attributes = []
     for i in range(n_attributes):
         # get occurances of each sub-attribute
-        arr = {}
-        total = 0
-        for example in range(n_examples):
-            key = examples[example][i]
-            if key not in arr:
-                arr[key] = [0, 0]
-            if target_attribute[example] == 1:
-                arr[key] = [arr[key][0] + 1, arr[key][1]]
-            else:
-                arr[key] = [arr[key][0], arr[key][1] + 1]
-            total += 1
+        arr, total = get_occurances(examples, target_attribute, i)
 
         # calculate entropy for each attribute
         ent = entropy(S)
@@ -267,6 +283,22 @@ def id3(
     root.label = attributes[selected_attribute]
     root.nodes = nodes
     return root
+
+
+def get_occurances(examples, target_attribute, attribute_pos):
+    # get occurances of each sub-attribute
+    arr = {}
+    total = 0
+    for example in range(examples.shape[0]):
+        key = examples[example][attribute_pos]
+        if key not in arr:
+            arr[key] = [0, 0]
+        if target_attribute[example] == 1:
+            arr[key] = [arr[key][0] + 1, arr[key][1]]
+        else:
+            arr[key] = [arr[key][0], arr[key][1] + 1]
+        total += 1
+    return arr, total
 
 
 def get_prediction(node, attributes, example, target_values) -> str:
