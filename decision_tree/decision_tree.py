@@ -24,8 +24,9 @@ class DecisionTree:
     def __init__(
         self,
         target_value_success="Yes",
-        max_depth=4,
+        max_depth=float("inf"),
         min_samples_split=0,
+        min_samples_leaf=0,
         variance_threshold=1,
     ):
         # NOTE: Feel free add any hyperparameters
@@ -34,8 +35,9 @@ class DecisionTree:
         self._target_values = []
         self._target_value_success = target_value_success
         self._max_depth = max_depth
-        self._variance_threshold = variance_threshold
         self._min_samples_split = min_samples_split
+        self._min_samples_leaf = min_samples_leaf
+        self._variance_threshold = variance_threshold
 
     def fit(self, X, y):
         """
@@ -98,6 +100,7 @@ class DecisionTree:
             0,
             self._max_depth,
             self._min_samples_split,
+            self._min_samples_leaf,
         )
         self._tree = tree
         # tree.print("")
@@ -200,6 +203,7 @@ def id3(
     depth,
     max_depth,
     min_samples_split,
+    min_samples_leaf,
 ) -> Tree:
     n_examples, n_attributes = examples.shape
     root = Tree()
@@ -229,7 +233,7 @@ def id3(
         return root
 
     # Attributes is empty
-    if n_attributes == 0 or depth == max_depth:
+    if n_attributes == 0 or depth == max_depth or n_examples <= min_samples_leaf:
         root.set_label(most_common_value)
         return root
 
@@ -275,6 +279,7 @@ def id3(
                     depth + 1,
                     max_depth,
                     min_samples_split,
+                    min_samples_leaf,
                 )
             ]
         nodes.append(node)
