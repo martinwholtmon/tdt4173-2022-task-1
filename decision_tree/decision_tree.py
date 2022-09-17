@@ -1,3 +1,4 @@
+from math import log2
 import numpy as np
 import pandas as pd
 import copy
@@ -29,6 +30,7 @@ class DecisionTree:
         min_samples_split=0,
         min_samples_leaf=0,
         variance_threshold=1,
+        selection_type="",
     ):
         # NOTE: Feel free add any hyperparameters
         # (with defaults) as you see fit
@@ -41,6 +43,7 @@ class DecisionTree:
         self._min_samples_split = min_samples_split
         self._min_samples_leaf = min_samples_leaf
         self._variance_threshold = variance_threshold
+        self._selection_type = selection_type
 
     def fit(self, X, y):
         """
@@ -105,6 +108,7 @@ class DecisionTree:
             self._max_depth,
             self._min_samples_split,
             self._min_samples_leaf,
+            self._selection_type,
         )
         # self._tree.print("")
 
@@ -252,6 +256,7 @@ def id3(
     max_depth,
     min_samples_split,
     min_samples_leaf,
+    selection_type,
 ) -> Tree:
     n_examples, n_attributes = examples.shape
     root = Tree()
@@ -294,10 +299,23 @@ def id3(
 
         # calculate entropy for each attribute
         ent = entropy(S)
+        si = 0
         for _, v in arr.items():
             v = np.asarray(v)
             ent = ent - sum(v) / total * entropy(v)
-        entropies.append(ent)
+            si = si - (sum(v) / total) * log2(sum(v) / total)
+        if selection_type == "split":
+            if si != 0:
+                entropies.append(si)
+            else:
+                entropies.append(0)
+        elif selection_type == "gainratio":
+            if si != 0:
+                entropies.append(ent / si)
+            else:
+                entropies.append(0)
+        else:
+            entropies.append(ent)
         all_attributes.append(list(arr.keys()))
         # print(f"Entrophy for attribute {attributes[i]} = {ent}")
     selected_attribute = np.argmax(entropies)
@@ -328,6 +346,7 @@ def id3(
                     max_depth,
                     min_samples_split,
                     min_samples_leaf,
+                    selection_type,
                 )
             ]
         nodes.append(node)
