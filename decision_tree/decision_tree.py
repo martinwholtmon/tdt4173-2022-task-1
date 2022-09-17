@@ -1,5 +1,3 @@
-from dataclasses import replace
-from distutils import dep_util
 import numpy as np
 import pandas as pd
 import copy
@@ -37,6 +35,7 @@ class DecisionTree:
         self._tree = Tree()
         self._target_values = []
         self._ground_thruth = []
+        self._rules = []
         self._target_value_success = target_value_success
         self._max_depth = max_depth
         self._min_samples_split = min_samples_split
@@ -109,7 +108,7 @@ class DecisionTree:
         )
         # self._tree.print("")
 
-    def post_prune(self, X, y):
+    def post_prune(self, X, y) -> list:
         # Post pruning
         # for each rule
         #   acc = accuracy(y, predict(tree))
@@ -120,22 +119,36 @@ class DecisionTree:
         #       calculate accuracy
         #       if new_acc < old_acc:
         #           self._tree = old_tree
+        attributes = np.asarray(X.columns)
+        X = np.asarray(X)
+        y = np.asarray(y)
         rules = self.get_rules()
+        rule_accuracy = []
 
-        for rule in rules:
-            acc = accuracy(y, self.predict(X))
-            # Prune the tree from bottom up
-            for pre_con, _ in list(reversed(rule[0])):
-                old_tree = copy.deepcopy(self._tree)
-
-                # Modify tree
-                prune_node(self._tree, rule[0], pre_con, Tree(rule[1]))
+        for rule in range(len(rules)):
+            acc = accuracy(y, predict_from_rules(X, rules, attributes))
+            old_rules = copy.deepcopy(rules)
+            best_rules = []
+            best_rule_acc = 0
+            for pre_con in range(len(rules[rule][0])):
+                rules = copy.deepcopy(old_rules)
+                del rules[rule][0][pre_con]
 
                 # Calulate accuracy
-                new_acc = accuracy(y, self.predict(X))
+                new_acc = accuracy(y, predict_from_rules(X, rules, attributes))
 
-                if new_acc <= acc:
-                    self._tree = old_tree
+                if new_acc > best_rule_acc:
+                    best_rule_acc = new_acc
+                    best_rules = rules
+
+            # update global
+            if best_rule_acc > acc:
+                rules = best_rules
+                rule_accuracy.append(best_rule_acc)
+            else:
+                rules = old_rules
+                rule_accuracy.append(acc)
+        self._rules = rules
 
     def predict(self, X):
         """
@@ -154,13 +167,15 @@ class DecisionTree:
         attributes = np.asarray(X.columns)
         X = np.asarray(X)
         tree = self._tree
-
         results = []
-        for e in X:
-            results.append(
-                get_prediction(tree, attributes, list(e), self._target_values)
-            )
-        # print(results)
+
+        if len(self._rules) != 0:
+            results = predict_from_rules(X, self._rules, attributes)
+        else:
+            for e in X:
+                results.append(
+                    get_prediction(tree, attributes, list(e), self._target_values)
+                )
         return np.asarray(results)
 
     def get_rules(self):
@@ -183,6 +198,7 @@ class DecisionTree:
         """
         rules = []
         get_leaf_nodes(self._tree, [], rules, self._target_values)
+        self._rules = rules
         return rules
 
 
@@ -353,13 +369,6 @@ def get_prediction(node, attributes, example, target_values) -> str:
     if next_node.label == "":
         return node.most_common_value
 
-    # Print
-    # print(attributes)
-    # print(example)
-    # print(f"attribute = {attribute}")
-    # print(f"Selected example = {next_node.label}")
-    # print(f"Next label = {next_node.nodes[0].label}")
-
     # Remove attribute from list and update example
     attributes = np.delete(attributes, np.where(attributes == attribute))
     example.remove(next_node.label)
@@ -392,10 +401,20 @@ def get_leaf_nodes(node, path, rules, target_values):
         path.pop()
 
 
-def prune_node(node, path, parent, replacement):
-    if node.label == parent:
-        node.nodes = [replacement]
-    else:
-        for n in node.nodes:
-            if n.label == path[0][1]:
-                prune_node(n.nodes[0], path[1:], parent, replacement)
+def predict_from_rules(X, rules, attributes) -> np.ndarray:
+    predictions = []
+    for example in X:
+        prediction = ""
+        for rule in rules:
+            depth = 0
+            for pre_con, val in rule[0]:
+                depth += 1
+                index = np.where(attributes == pre_con)
+                if example[index] == val:
+                    if depth != len(rule[0]):
+                        continue
+                    prediction = rule[1]
+                else:
+                    break
+        predictions.append(prediction)
+    return np.asarray(predictions)
