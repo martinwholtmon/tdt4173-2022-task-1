@@ -1,7 +1,6 @@
 import random
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler, Normalizer
 
 # IMPORTANT: DO NOT USE ANY OTHER 3RD PARTY PACKAGES
 # (math, random, collections, functools, etc. are perfectly fine)
@@ -48,7 +47,7 @@ class KMeans:
         # k-means
         for _ in range(n_iterations):
             # Get cluster
-            cluster = get_cluster_assignments(X, centroids, samples)
+            cluster = get_cluster_assignments(X, centroids)
 
             # Calculate new centroids
             centroids = calulate_new_centroids(X, cluster, n_clusters, centroids)
@@ -80,8 +79,7 @@ class KMeans:
         X = (X - X_mean) / X_std
         centroids = (self._centroids - X_mean) / X_std
 
-        return get_cluster_assignments(X, centroids, X.shape[0]).astype(int)
-        # return self._cluster.astype(int)
+        return get_cluster_assignments(X, centroids).astype(int)
 
     def get_centroids(self):
         """
@@ -206,7 +204,17 @@ def euclidean_silhouette(X, z):
     return np.mean((b - a) / np.maximum(a, b))
 
 
-def get_cluster_assignments(X, centroids, samples) -> np.ndarray:
+def get_cluster_assignments(X, centroids) -> np.ndarray:
+    """Calculate the cluster assignments for a a set of datapoints
+
+    Args:
+        X (np.ndarray): the datapoints
+        centroids (np.ndarray): the centroid locations
+
+    Returns:
+        np.ndarray: cluster assignmnets for each datapoint
+    """
+    samples = X.shape[0]
     cluster = np.empty((samples), float)
     for dp in range(samples):
         # For each datapoint, calulate the eucleadian distance to the centroids
